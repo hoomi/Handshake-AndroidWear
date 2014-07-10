@@ -7,10 +7,10 @@
     tools:context=".MyWatchActivity"
     tools:deviceIds="wear_square">
 
-    <TextView
-        android:id="@+id/text"
+    <CheckBox
+        android:id="@+id/handshake_CheckBox"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="@string/hello_square" />
+        android:text="@string/start_service"/>
 </FrameLayout>

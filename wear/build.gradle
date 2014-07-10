@@ -4,11 +4,10 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 20
     buildToolsVersion "20.0.0"
-    useOldManifestMerger true
 
     defaultConfig {
         applicationId "uk.co.o2.android.handshake"
-        minSdkVersion 19
+        minSdkVersion 20
         targetSdkVersion 20
         versionCode 1
         versionName "1.0"
@@ -23,8 +22,8 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-//    compile 'com.google.android.support:wearable:+'
+    compile 'com.google.android.support:wearable:+'
+    compile 'com.google.android.gms:play-services-wearable:+'
     compile project(':CommonJava')
 
-    compile 'com.google.android.gms:play-services-wearable:+'
 }

@@ -2,50 +2,46 @@ package uk.co.o2.android.handshake;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 
-import uk.co.o2.android.handshake.R;
+import uk.co.o2.android.handshake.common.utils.Constants;
 
-public class TestActivity extends Activity implements View.OnClickListener{
+public class TestActivity extends Activity implements CompoundButton.OnCheckedChangeListener {
+
+    private SharedPreferences mSharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_test);
+        CheckBox checkBox = (CheckBox) findViewById(R.id.handshake_CheckBox);
+        checkBox.setChecked(isRunning());
+        checkBox.setOnCheckedChangeListener(this);
     }
-
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.test, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onClick(View v) {
-        startService(new Intent(this,BluetoothService.class));
-    }
-
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopService(new Intent(this,BluetoothService.class));
+        stopService(new Intent(this, PhoneContactService.class));
+    }
+
+    private boolean isRunning() {
+        if (mSharedPreferences == null) {
+            mSharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
+        }
+        return mSharedPreferences.getBoolean(Constants.Extras.RUNNING, false);
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        Intent intent = new Intent(this, PhoneContactService.class);
+        if (isChecked) {
+            startService(intent);
+        } else {
+            stopService(intent);
+        }
     }
 }

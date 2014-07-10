@@ -3,8 +3,6 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 20
     buildToolsVersion '20.0.0'
-    useOldManifestMerger true
-
     defaultConfig {
         applicationId "uk.co.o2.android.handshake"
         minSdkVersion 11

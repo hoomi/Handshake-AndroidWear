@@ -1,9 +1,9 @@
-package uk.co.o2.android.handshake.utils;
+package uk.co.o2.android.handshake.common.utils;
 
 /**
  * Created by hostova1 on 09/07/2014.
  */
-public class Utils {
+public final class Utils {
 //    // convert InputStream to String
 //    public static String getStringFromInputStream(InputStream is) throws IOException {
 //
