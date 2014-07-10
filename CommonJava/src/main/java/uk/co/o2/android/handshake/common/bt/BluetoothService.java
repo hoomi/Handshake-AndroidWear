@@ -16,10 +16,6 @@
 
 package uk.co.o2.android.handshake.common.bt;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -30,10 +26,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import uk.co.o2.android.handshake.common.utils.Constants;
-import uk.co.o2.android.handshake.common.utils.Constants.*;
+import uk.co.o2.android.handshake.common.utils.Constants.BluetoothMessages;
+import uk.co.o2.android.handshake.common.utils.Constants.Extras;
 import uk.co.o2.android.handshake.common.utils.Logger;
 
 /**
@@ -205,22 +205,27 @@ public class BluetoothService {
     public synchronized void stop() {
         Logger.d(this, "stop");
 
+        Logger.d(this, "1");
         if (mConnectThread != null) {
             mConnectThread.cancel();
             mConnectThread = null;
         }
 
+        Logger.d(this, "2");
         if (mConnectedThread != null) {
             mConnectedThread.cancel();
             mConnectedThread = null;
         }
 
 
+        Logger.d(this, "3");
         if (mInsecureAcceptThread != null) {
             mInsecureAcceptThread.cancel();
             mInsecureAcceptThread = null;
         }
+        Logger.d(this, "4");
         setState(STATE_NONE);
+        Logger.d(this, "5");
     }
 
     /**

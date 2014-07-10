@@ -31,8 +31,13 @@ import uk.co.o2.android.handshake.common.utils.Utils;
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class WearableContactService extends Service implements SensorEventListener {
 
+
+    private final static short MIN_POWER_LIMIT = -60;
+    private final static short MAX_POWER_LIMIT = -40;
     private BluetoothService mBluetoothService;
     private BluetoothAdapter mBluetoothAdapter;
+    private short prevRSSI = MIN_POWER_LIMIT;
+    private BluetoothDevice mBluetoothDevice;
     private Handler mHandler = new BluetoothHandler() {
         @Override
         public void handleMessage(Message msg) {
@@ -41,21 +46,20 @@ public class WearableContactService extends Service implements SensorEventListen
                     if (mBluetoothService != null) {
                         mBluetoothService.write("This is a message from the watch".getBytes());
                     }
-                } else if (msg.arg1 == BluetoothService.STATE_NONE) {
+                } else if (msg.arg1 == BluetoothService.STATE_NONE || msg.arg1 == BluetoothService.STATE_LISTEN) {
                     if (mSensorManager != null && mAccelerometer != null) {
                         mSensorManager.registerListener(WearableContactService.this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
                     }
                 }
             } else if (msg.what == Constants.BluetoothMessages.MESSAGE_WRITE) {
+                Utils.vibrate(WearableContactService.this);
                 this.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        Utils.vibrate(WearableContactService.this);
                         mBluetoothService.stop();
                         if (mSensorManager != null && mAccelerometer != null) {
                             mSensorManager.registerListener(WearableContactService.this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
                         }
-
                     }
                 }, 500);
             }
@@ -70,24 +74,42 @@ public class WearableContactService extends Service implements SensorEventListen
     private long lastTimeStamp = 0;
     private final static int HANDSHAKE_LIMIT = 3;
     private final static long TIME_LIMIT = 1000;
+    private long lastTimeBTFound = 0;
     private SharedPreferences sharedPreferences;
+
+    private Runnable connectBtRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mBluetoothDevice != null) {
+                mBluetoothAdapter.cancelDiscovery();
+                startAConnectionTo(mBluetoothDevice);
+            }
+        }
+    };
 
     private BroadcastReceiver btReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                lastTimeBTFound = System.currentTimeMillis();
                 BluetoothDevice bluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 short rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, (short) 0);
-                Logger.d(this, "Device address: " + bluetoothDevice.getAddress());
-//                if (bluetoothDevice != null && bluetoothDevice.getAddress().equalsIgnoreCase("38:0B:40:DC:AD:5E")) {
-                if (bluetoothDevice != null && bluetoothDevice.getAddress().equalsIgnoreCase("BC:CF:CC:21:46:DA")) {
-                    startAConnectionTo(bluetoothDevice);
+                if (rssi <= MAX_POWER_LIMIT && rssi >= MIN_POWER_LIMIT) {
+                    if (rssi > prevRSSI) {
+                        prevRSSI = rssi;
+                        mBluetoothDevice = bluetoothDevice;
+                    }
+                    Logger.d(this, "Device address: " + bluetoothDevice.getAddress());
+                    Logger.d(this, String.format("rssi: %d \n", rssi));
                 }
-                Logger.d(this, String.format("rssi: %d \n", rssi));
+                mHandler.removeCallbacks(connectBtRunnable);
+                mHandler.postDelayed(connectBtRunnable, 1000);
                 //Stop Handshake detection until the discovery is finished
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
-
+                if (mBluetoothDevice != null) {
+                    startAConnectionTo(mBluetoothDevice);
+                }
                 if (mBluetoothService != null) {
                     int state = mBluetoothService.getState();
                     if (state == BluetoothService.STATE_NONE) {
@@ -97,7 +119,9 @@ public class WearableContactService extends Service implements SensorEventListen
 
                     }
                 }
-
+            } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
+                prevRSSI = MIN_POWER_LIMIT;
+                mBluetoothDevice = null;
             }
         }
     };

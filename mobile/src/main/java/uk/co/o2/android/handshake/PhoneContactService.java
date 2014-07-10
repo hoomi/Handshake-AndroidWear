@@ -10,6 +10,7 @@ import android.os.Message;
 import uk.co.o2.android.handshake.common.bt.BluetoothHandler;
 import uk.co.o2.android.handshake.common.bt.BluetoothService;
 import uk.co.o2.android.handshake.common.utils.Constants;
+import uk.co.o2.android.handshake.common.utils.Logger;
 import uk.co.o2.android.handshake.common.utils.Utils;
 
 
@@ -17,7 +18,7 @@ public class PhoneContactService extends Service {
 
     private BluetoothService mBluetoothService;
     private SharedPreferences sharedPreferences;
-    private Handler mHandler  = new BluetoothHandler() {
+    private Handler mHandler = new BluetoothHandler() {
         @Override
         public void handleMessage(Message msg) {
             if (msg.what == Constants.BluetoothMessages.MESSAGE_READ) {
@@ -26,6 +27,7 @@ public class PhoneContactService extends Service {
             super.handleMessage(msg);
         }
     };
+
     public PhoneContactService() {
     }
 
@@ -38,7 +40,7 @@ public class PhoneContactService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        mBluetoothService = new BluetoothService(this,mHandler);
+        mBluetoothService = new BluetoothService(this, mHandler);
         mBluetoothService.start();
         setRunning(true);
     }
@@ -51,10 +53,9 @@ public class PhoneContactService extends Service {
     @Override
     public void onDestroy() {
         setRunning(false);
-        if (mBluetoothService !=  null) {
+        if (mBluetoothService != null) {
             mBluetoothService.setHandler(null);
             mBluetoothService.stop();
-            mBluetoothService = null;
         }
         super.onDestroy();
     }
