@@ -17,6 +17,12 @@ public final class Constants {
         public static final int MESSAGE_WRITE = 4;
     }
 
+    public static final class Action {
+        private static final String ACTION_BASE = "uk.co.o2.android.handshake.";
+        public static final String DELETED = ACTION_BASE + "DELETED";
+
+    }
+
     public static final class Extras {
         public static final String DEVICE_NAME = "device_name";
         public static final String TOAST = "toast";

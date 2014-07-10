@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Handshake</string>
     <string name="start_service">Start Handshake detection</string>
+    <string name="open">Open</string>
 </resources>

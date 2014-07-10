@@ -2,6 +2,8 @@
 package uk.co.o2.android.handshake.services;
 
 import android.annotation.TargetApi;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -11,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -21,6 +24,8 @@ import android.os.IBinder;
 import android.os.Message;
 import android.util.Log;
 
+import uk.co.o2.android.handshake.MyWatchActivity;
+import uk.co.o2.android.handshake.R;
 import uk.co.o2.android.handshake.common.bt.BluetoothHandler;
 import uk.co.o2.android.handshake.common.bt.BluetoothService;
 import uk.co.o2.android.handshake.common.utils.Constants;
@@ -74,7 +79,6 @@ public class WearableContactService extends Service implements SensorEventListen
     private long lastTimeStamp = 0;
     private final static int HANDSHAKE_LIMIT = 3;
     private final static long TIME_LIMIT = 1000;
-    private long lastTimeBTFound = 0;
     private SharedPreferences sharedPreferences;
 
     private Runnable connectBtRunnable = new Runnable() {
@@ -92,7 +96,6 @@ public class WearableContactService extends Service implements SensorEventListen
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                lastTimeBTFound = System.currentTimeMillis();
                 BluetoothDevice bluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 short rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, (short) 0);
                 if (rssi <= MAX_POWER_LIMIT && rssi >= MIN_POWER_LIMIT) {
@@ -128,6 +131,10 @@ public class WearableContactService extends Service implements SensorEventListen
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        String action = intent.getAction();
+        if (Constants.Action.DELETED.equals(action)) {
+            stopSelf();
+        }
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -146,6 +153,7 @@ public class WearableContactService extends Service implements SensorEventListen
         registerReceiver(btReceiver, new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_STARTED));
         registerReceiver(btReceiver, new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
         setRunning(true);
+        startForeground(1, createNotification());
     }
 
 
@@ -164,6 +172,7 @@ public class WearableContactService extends Service implements SensorEventListen
         if (mAccelerometer != null) {
             mSensorManager.unregisterListener(this);
         }
+        stopForeground(true);
     }
 
     @Override
@@ -254,6 +263,24 @@ public class WearableContactService extends Service implements SensorEventListen
         if (sharedPreferences == null) {
             sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
         }
-        sharedPreferences.edit().putBoolean(Constants.Extras.RUNNING, running).commit();
+        sharedPreferences.edit().putBoolean(Constants.Extras.RUNNING, running).apply();
+    }
+
+
+    private Notification createNotification() {
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
+                new Intent(this, MyWatchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_UPDATE_CURRENT);
+        Notification.Action action =
+                new Notification.Action(R.drawable.ic_hs_notification, getString(R.string.open),pendingIntent);
+        Intent intent = new Intent(Constants.Action.DELETED);
+        pendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return new Notification.Builder(this)
+                .setSmallIcon(R.drawable.ic_hs_notification)
+                .setDeleteIntent(pendingIntent)
+                .setContentTitle(getString(R.string.app_name))
+                .setLargeIcon(BitmapFactory.decodeResource(getResources(),R.drawable.handshake))
+                .addAction(action)
+                .build();
     }
 }
