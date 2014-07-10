@@ -5,10 +5,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 
 import uk.co.o2.android.handshake.common.bt.BluetoothHandler;
 import uk.co.o2.android.handshake.common.bt.BluetoothService;
 import uk.co.o2.android.handshake.common.utils.Constants;
+import uk.co.o2.android.handshake.common.utils.Utils;
 
 
 public class PhoneContactService extends Service {
@@ -16,7 +18,13 @@ public class PhoneContactService extends Service {
     private BluetoothService mBluetoothService;
     private SharedPreferences sharedPreferences;
     private Handler mHandler  = new BluetoothHandler() {
-
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == Constants.BluetoothMessages.MESSAGE_READ) {
+                Utils.vibrate(PhoneContactService.this);
+            }
+            super.handleMessage(msg);
+        }
     };
     public PhoneContactService() {
     }

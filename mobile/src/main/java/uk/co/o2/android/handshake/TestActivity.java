@@ -25,7 +25,6 @@ public class TestActivity extends Activity implements CompoundButton.OnCheckedCh
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopService(new Intent(this, PhoneContactService.class));
     }
 
     private boolean isRunning() {

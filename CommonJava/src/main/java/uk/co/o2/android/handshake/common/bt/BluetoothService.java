@@ -51,7 +51,6 @@ public class BluetoothService {
     // Member fields
     private final BluetoothAdapter mAdapter;
     private Handler mHandler;
-    private AcceptThread mSecureAcceptThread;
     private AcceptThread mInsecureAcceptThread;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
@@ -123,13 +122,8 @@ public class BluetoothService {
 
         setState(STATE_LISTEN);
 
-        // Start the thread to listen on a BluetoothServerSocket
-        if (mSecureAcceptThread == null) {
-            mSecureAcceptThread = new AcceptThread(true);
-            mSecureAcceptThread.start();
-        }
         if (mInsecureAcceptThread == null) {
-            mInsecureAcceptThread = new AcceptThread(false);
+            mInsecureAcceptThread = new AcceptThread();
             mInsecureAcceptThread.start();
         }
     }
@@ -138,9 +132,8 @@ public class BluetoothService {
      * Start the ConnectThread to initiate a connection to a remote device.
      *
      * @param device The BluetoothDevice to connect
-     * @param secure Socket Security type - Secure (true) , Insecure (false)
      */
-    public synchronized void connect(BluetoothDevice device, boolean secure) {
+    public synchronized void connect(BluetoothDevice device) {
         Logger.d(this, "connect to: " + device);
 
         // Cancel any thread attempting to make a connection
@@ -158,7 +151,7 @@ public class BluetoothService {
         }
 
         // Start the thread to connect with the given device
-        mConnectThread = new ConnectThread(device, secure);
+        mConnectThread = new ConnectThread(device);
         mConnectThread.start();
         setState(STATE_CONNECTING);
     }
@@ -185,11 +178,6 @@ public class BluetoothService {
             mConnectedThread = null;
         }
 
-        // Cancel the accept thread because we only want to connect to one device
-        if (mSecureAcceptThread != null) {
-            mSecureAcceptThread.cancel();
-            mSecureAcceptThread = null;
-        }
         if (mInsecureAcceptThread != null) {
             mInsecureAcceptThread.cancel();
             mInsecureAcceptThread = null;
@@ -227,10 +215,6 @@ public class BluetoothService {
             mConnectedThread = null;
         }
 
-        if (mSecureAcceptThread != null) {
-            mSecureAcceptThread.cancel();
-            mSecureAcceptThread = null;
-        }
 
         if (mInsecureAcceptThread != null) {
             mInsecureAcceptThread.cancel();
@@ -301,19 +285,14 @@ public class BluetoothService {
         private final BluetoothServerSocket mmServerSocket;
         private String mSocketType;
 
-        public AcceptThread(boolean secure) {
+        public AcceptThread() {
             BluetoothServerSocket tmp = null;
-            mSocketType = secure ? "Secure" : "Insecure";
+            mSocketType = "Insecure";
 
             // Create a new listening server socket
             try {
-                if (secure) {
-                    tmp = mAdapter.listenUsingRfcommWithServiceRecord(NAME_SECURE,
-                            Constants.MY_UUID_SECURE);
-                } else {
-                    tmp = mAdapter.listenUsingInsecureRfcommWithServiceRecord(
-                            NAME_INSECURE, Constants.MY_UUID_INSECURE);
-                }
+                tmp = mAdapter.listenUsingInsecureRfcommWithServiceRecord(
+                        NAME_INSECURE, Constants.MY_UUID_INSECURE);
             } catch (IOException e) {
                 Logger.e(this, "Socket Type: " + mSocketType + "listen() failed", e);
             }
@@ -366,6 +345,9 @@ public class BluetoothService {
         }
 
         public void cancel() {
+            if (mmServerSocket == null) {
+                return;
+            }
             Logger.d(this, "Socket Type" + mSocketType + "cancel " + this);
             try {
                 mmServerSocket.close();
@@ -386,21 +368,16 @@ public class BluetoothService {
         private final BluetoothDevice mmDevice;
         private String mSocketType;
 
-        public ConnectThread(BluetoothDevice device, boolean secure) {
+        public ConnectThread(BluetoothDevice device) {
             mmDevice = device;
             BluetoothSocket tmp = null;
-            mSocketType = secure ? "Secure" : "Insecure";
+            mSocketType = "Insecure";
 
             // Get a BluetoothSocket for a connection with the
             // given BluetoothDevice
             try {
-                if (secure) {
-                    tmp = device.createRfcommSocketToServiceRecord(
-                            Constants.MY_UUID_SECURE);
-                } else {
-                    tmp = device.createInsecureRfcommSocketToServiceRecord(
-                            Constants.MY_UUID_INSECURE);
-                }
+                tmp = device.createInsecureRfcommSocketToServiceRecord(
+                        Constants.MY_UUID_INSECURE);
             } catch (IOException e) {
                 Logger.e(this, "Socket Type: " + mSocketType + "create() failed", e);
             }
@@ -419,6 +396,7 @@ public class BluetoothService {
                 // This is a blocking call and will only return on a
                 // successful connection or an exception
                 mmSocket.connect();
+
             } catch (IOException e) {
                 // Close the socket
                 try {

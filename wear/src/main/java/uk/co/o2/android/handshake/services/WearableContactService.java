@@ -25,6 +25,7 @@ import uk.co.o2.android.handshake.common.bt.BluetoothHandler;
 import uk.co.o2.android.handshake.common.bt.BluetoothService;
 import uk.co.o2.android.handshake.common.utils.Constants;
 import uk.co.o2.android.handshake.common.utils.Logger;
+import uk.co.o2.android.handshake.common.utils.Utils;
 
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
@@ -45,6 +46,18 @@ public class WearableContactService extends Service implements SensorEventListen
                         mSensorManager.registerListener(WearableContactService.this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
                     }
                 }
+            } else if (msg.what == Constants.BluetoothMessages.MESSAGE_WRITE) {
+                this.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        Utils.vibrate(WearableContactService.this);
+                        mBluetoothService.stop();
+                        if (mSensorManager != null && mAccelerometer != null) {
+                            mSensorManager.registerListener(WearableContactService.this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+                        }
+
+                    }
+                }, 500);
             }
             super.handleMessage(msg);
         }
@@ -65,21 +78,25 @@ public class WearableContactService extends Service implements SensorEventListen
             String action = intent.getAction();
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice bluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                short rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, (short) 0);
                 Logger.d(this, "Device address: " + bluetoothDevice.getAddress());
 //                if (bluetoothDevice != null && bluetoothDevice.getAddress().equalsIgnoreCase("38:0B:40:DC:AD:5E")) {
                 if (bluetoothDevice != null && bluetoothDevice.getAddress().equalsIgnoreCase("BC:CF:CC:21:46:DA")) {
                     startAConnectionTo(bluetoothDevice);
                 }
-                short rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, (short) 0);
                 Logger.d(this, String.format("rssi: %d \n", rssi));
                 //Stop Handshake detection until the discovery is finished
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
-                if (mSensorManager != null) {
-                    mSensorManager.unregisterListener(WearableContactService.this);
-                }
-
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
 
+                if (mBluetoothService != null) {
+                    int state = mBluetoothService.getState();
+                    if (state == BluetoothService.STATE_NONE) {
+                        if (mSensorManager != null && mAccelerometer != null) {
+                            mSensorManager.registerListener(WearableContactService.this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+                        }
+
+                    }
+                }
 
             }
         }
@@ -94,7 +111,7 @@ public class WearableContactService extends Service implements SensorEventListen
     @Override
     public void onCreate() {
         super.onCreate();
-        Logger.d(this,"onCreate");
+        Logger.d(this, "onCreate");
         if (initialize()) {
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         } else {
@@ -143,7 +160,7 @@ public class WearableContactService extends Service implements SensorEventListen
         int state = mBluetoothService.getState();
         if (state != BluetoothService.STATE_CONNECTED &&
                 state != BluetoothService.STATE_CONNECTING) {
-            mBluetoothService.connect(bluetoothDevice, false);
+            mBluetoothService.connect(bluetoothDevice);
         }
     }
 
@@ -178,10 +195,9 @@ public class WearableContactService extends Service implements SensorEventListen
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             final float alpha = 0.8f;
             long now = System.currentTimeMillis();
-            Logger.d(this, "now: " + now);
-            float newLinearAcceleration = 0.0f;
-            gravity = alpha * gravity + (1 - alpha) * event.values[0];
-            newLinearAcceleration = event.values[0] - gravity;
+            float newLinearAcceleration;
+            gravity = alpha * gravity + (1 - alpha) * event.values[1];
+            newLinearAcceleration = event.values[1] - gravity;
             if (newLinearAcceleration * linear_acceleration < -1 && now - lastTimeStamp < TIME_LIMIT) {
                 counter++;
             } else {
@@ -204,6 +220,9 @@ public class WearableContactService extends Service implements SensorEventListen
 
     private void handShakeDetected() {
         Log.d("Test", "Handshake detected");
+        if (mSensorManager != null) {
+            mSensorManager.unregisterListener(WearableContactService.this);
+        }
         scanBTDevices(true);
     }
 

@@ -5,6 +5,7 @@ import android.os.Message;
 
 import uk.co.o2.android.handshake.common.utils.Constants;
 import uk.co.o2.android.handshake.common.utils.Logger;
+import uk.co.o2.android.handshake.common.utils.Utils;
 
 /**
  * Created by hostova1 on 10/07/2014.
@@ -39,7 +40,6 @@ public class BluetoothHandler extends Handler {
                 // construct a string from the valid bytes in the buffer
                 String readMessage = new String(readBuf, 0, msg.arg1);
                 Logger.d(this,"Read message is: " + readMessage);
-
                 break;
             case Constants.BluetoothMessages.MESSAGE_DEVICE_NAME:
                 break;

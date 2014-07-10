@@ -1,19 +1,16 @@
 package uk.co.o2.android.handshake.common.utils;
 
+import android.content.Context;
+import android.os.Vibrator;
+
 /**
  * Created by hostova1 on 09/07/2014.
  */
 public final class Utils {
-//    // convert InputStream to String
-//    public static String getStringFromInputStream(InputStream is) throws IOException {
-//
-//        StringWriter writer = new StringWriter();
-//        IOUtils.copy(is, writer);
-//        return writer.toString();
-//    }
-
-    public  static void test(){
-
+    public static void vibrate(Context context) {
+        Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator.hasVibrator()) {
+            vibrator.vibrate(200);
+        }
     }
-
 }
