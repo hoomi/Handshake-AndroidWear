@@ -9,6 +9,7 @@ import android.os.Message;
 
 import uk.co.o2.android.handshake.common.bt.BluetoothHandler;
 import uk.co.o2.android.handshake.common.bt.BluetoothService;
+import uk.co.o2.android.handshake.common.model.Contact;
 import uk.co.o2.android.handshake.common.utils.Constants;
 import uk.co.o2.android.handshake.common.utils.Logger;
 import uk.co.o2.android.handshake.common.utils.Utils;
@@ -23,6 +24,14 @@ public class PhoneContactService extends Service {
         public void handleMessage(Message msg) {
             if (msg.what == Constants.BluetoothMessages.MESSAGE_READ) {
                 Utils.vibrate(PhoneContactService.this);
+                byte[] readBuf = (byte[]) msg.obj;
+                String readMessage = new String(readBuf, 0, msg.arg1);
+                Logger.d(this, "Read message is: " + readMessage);
+                Contact contact = MobileHandshakeApplication.getGson().fromJson(readMessage, Contact.class);
+                startActivity(new Intent(PhoneContactService.this, TransparentActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra(Constants.Extras.CONTACT, contact));
+                return;
             }
             super.handleMessage(msg);
         }
@@ -65,6 +74,6 @@ public class PhoneContactService extends Service {
         if (sharedPreferences == null) {
             sharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
         }
-        sharedPreferences.edit().putBoolean(Constants.Extras.RUNNING, running).commit();
+        sharedPreferences.edit().putBoolean(Constants.Extras.RUNNING, running).apply();
     }
 }

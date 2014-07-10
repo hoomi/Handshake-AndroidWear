@@ -27,5 +27,6 @@ public final class Constants {
         public static final String DEVICE_NAME = "device_name";
         public static final String TOAST = "toast";
         public static final String RUNNING = "running";
+        public static final String CONTACT = "contact";
     }
 }

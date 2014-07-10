@@ -6,7 +6,7 @@ import uk.co.o2.android.handshake.common.utils.Logger;
 /**
  * Created by hostova1 on 10/07/2014.
  */
-public class WearHandshakeActivity extends HandshakeApplication {
+public class WearHandshakeApplication extends HandshakeApplication {
     @Override
     public void onCreate() {
         super.onCreate();

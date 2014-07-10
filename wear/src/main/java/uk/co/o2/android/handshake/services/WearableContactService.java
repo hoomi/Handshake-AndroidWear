@@ -26,8 +26,10 @@ import android.util.Log;
 
 import uk.co.o2.android.handshake.MyWatchActivity;
 import uk.co.o2.android.handshake.R;
+import uk.co.o2.android.handshake.WearHandshakeApplication;
 import uk.co.o2.android.handshake.common.bt.BluetoothHandler;
 import uk.co.o2.android.handshake.common.bt.BluetoothService;
+import uk.co.o2.android.handshake.common.model.Contact;
 import uk.co.o2.android.handshake.common.utils.Constants;
 import uk.co.o2.android.handshake.common.utils.Logger;
 import uk.co.o2.android.handshake.common.utils.Utils;
@@ -36,7 +38,7 @@ import uk.co.o2.android.handshake.common.utils.Utils;
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class WearableContactService extends Service implements SensorEventListener {
 
-
+    private Contact contact = new Contact("Hooman", "Ostovari", "07530114368", "hooman.ostovari@telefonica.com");
     private final static short MIN_POWER_LIMIT = -60;
     private final static short MAX_POWER_LIMIT = -40;
     private BluetoothService mBluetoothService;
@@ -49,7 +51,9 @@ public class WearableContactService extends Service implements SensorEventListen
             if (msg.what == Constants.BluetoothMessages.MESSAGE_STATE_CHANGE) {
                 if (msg.arg1 == BluetoothService.STATE_CONNECTED) {
                     if (mBluetoothService != null) {
-                        mBluetoothService.write("This is a message from the watch".getBytes());
+                        String json = WearHandshakeApplication.getGson().toJson(contact);
+                        Logger.d(this,"json: " + json);
+                        mBluetoothService.write(json.getBytes());
                     }
                 } else if (msg.arg1 == BluetoothService.STATE_NONE || msg.arg1 == BluetoothService.STATE_LISTEN) {
                     if (mSensorManager != null && mAccelerometer != null) {
@@ -253,6 +257,7 @@ public class WearableContactService extends Service implements SensorEventListen
 
     private void handShakeDetected() {
         Log.d("Test", "Handshake detected");
+        Utils.vibrate(this);
         if (mSensorManager != null) {
             mSensorManager.unregisterListener(WearableContactService.this);
         }
@@ -272,14 +277,14 @@ public class WearableContactService extends Service implements SensorEventListen
                 new Intent(this, MyWatchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Action action =
-                new Notification.Action(R.drawable.ic_hs_notification, getString(R.string.open),pendingIntent);
+                new Notification.Action(R.drawable.ic_hs_notification, getString(R.string.open), pendingIntent);
         Intent intent = new Intent(Constants.Action.DELETED);
         pendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         return new Notification.Builder(this)
                 .setSmallIcon(R.drawable.ic_hs_notification)
                 .setDeleteIntent(pendingIntent)
                 .setContentTitle(getString(R.string.app_name))
-                .setLargeIcon(BitmapFactory.decodeResource(getResources(),R.drawable.handshake))
+                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.handshake))
                 .addAction(action)
                 .build();
     }
