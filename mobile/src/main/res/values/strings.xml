@@ -4,9 +4,14 @@
     <string name="title_activity_test">TestActivity</string>
     <string name="action_settings">Settings</string>
 
+    <string name="first_name">First Name</string>
+    <string name="family_name">Family Name</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="email_address">Email Address</string>
     <string name="first_name_is">First Name: %1$s</string>
     <string name="family_name_is">Surname: %1$s</string>
     <string name="phone_number_is">Phone Number: %1$s</string>
     <string name="email_address_is">Email Address: %1$s</string>
+    <string name="save">Save</string>
 
 </resources>

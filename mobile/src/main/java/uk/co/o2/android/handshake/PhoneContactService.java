@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PowerManager;
 
 import uk.co.o2.android.handshake.common.bt.BluetoothHandler;
 import uk.co.o2.android.handshake.common.bt.BluetoothService;
@@ -19,6 +20,7 @@ public class PhoneContactService extends Service {
 
     private BluetoothService mBluetoothService;
     private SharedPreferences sharedPreferences;
+    private PowerManager.WakeLock wakeLock;
     private Handler mHandler = new BluetoothHandler() {
         @Override
         public void handleMessage(Message msg) {
@@ -52,6 +54,11 @@ public class PhoneContactService extends Service {
         mBluetoothService = new BluetoothService(this, mHandler);
         mBluetoothService.start();
         setRunning(true);
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        if (wakeLock != null) {
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Handshake Lock");
+            wakeLock.acquire();
+        }
     }
 
     @Override
@@ -65,6 +72,10 @@ public class PhoneContactService extends Service {
         if (mBluetoothService != null) {
             mBluetoothService.setHandler(null);
             mBluetoothService.stop();
+        }
+        if (wakeLock != null) {
+            wakeLock.release();
+            wakeLock = null;
         }
         super.onDestroy();
     }

@@ -6,7 +6,6 @@ import java.util.UUID;
  * Created by hostova1 on 10/07/2014.
  */
 public final class Constants {
-    public static final UUID MY_UUID_SECURE = UUID.fromString("b1e49fea-3129-4534-9b94-64a2438e8deb");
     public static final UUID MY_UUID_INSECURE = UUID.fromString("6fa7fea4-5351-4bb3-aecb-882380fee7f7");
 
     public static final class BluetoothMessages {
@@ -28,5 +27,23 @@ public final class Constants {
         public static final String TOAST = "toast";
         public static final String RUNNING = "running";
         public static final String CONTACT = "contact";
+        public static final String BT_ADDRESS = "bt_address";
+    }
+
+
+    public static final class SharedPreferences {
+        public static final String FIRST_NAME = "first_name";
+        public static final String FAMILY_NAME = "family_name";
+        public static final String PHONE_NUMBER = "phone_number";
+        public static final String EMAIL_ADDRESS = "email_address";
+        public static final String BT_ADDRESS = "bt_address";
+
+    }
+
+
+    public static final class Path {
+        public static final String Contact = "/uk/co/o2/android/handshake/contact";
+        public static final String BT_ADDRESS = "/uk/co/o2/android/handshake/bluetoothAddress";
+
     }
 }

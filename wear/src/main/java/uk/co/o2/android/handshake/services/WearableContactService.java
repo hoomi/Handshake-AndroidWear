@@ -22,6 +22,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PowerManager;
 import android.util.Log;
 
 import uk.co.o2.android.handshake.MyWatchActivity;
@@ -36,15 +37,17 @@ import uk.co.o2.android.handshake.common.utils.Utils;
 
 
 @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
-public class WearableContactService extends Service implements SensorEventListener {
+public class WearableContactService extends Service implements SensorEventListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private Contact contact = new Contact("Hooman", "Ostovari", "07530114368", "hooman.ostovari@telefonica.com");
+    private Contact contact;
     private final static short MIN_POWER_LIMIT = -60;
     private final static short MAX_POWER_LIMIT = -40;
     private BluetoothService mBluetoothService;
     private BluetoothAdapter mBluetoothAdapter;
     private short prevRSSI = MIN_POWER_LIMIT;
     private BluetoothDevice mBluetoothDevice;
+    private SharedPreferences mSharedPreferences;
+    private String ownerBTAddress = "";
     private Handler mHandler = new BluetoothHandler() {
         @Override
         public void handleMessage(Message msg) {
@@ -52,7 +55,7 @@ public class WearableContactService extends Service implements SensorEventListen
                 if (msg.arg1 == BluetoothService.STATE_CONNECTED) {
                     if (mBluetoothService != null) {
                         String json = WearHandshakeApplication.getGson().toJson(contact);
-                        Logger.d(this,"json: " + json);
+                        Logger.d(this, "json: " + json);
                         mBluetoothService.write(json.getBytes());
                     }
                 } else if (msg.arg1 == BluetoothService.STATE_NONE || msg.arg1 == BluetoothService.STATE_LISTEN) {
@@ -82,7 +85,8 @@ public class WearableContactService extends Service implements SensorEventListen
     private int counter = 0;
     private long lastTimeStamp = 0;
     private final static int HANDSHAKE_LIMIT = 3;
-    private final static long TIME_LIMIT = 1000;
+    private final static long TIME_LIMIT = 500;
+    private PowerManager.WakeLock wakeLock;
     private SharedPreferences sharedPreferences;
 
     private Runnable connectBtRunnable = new Runnable() {
@@ -99,19 +103,28 @@ public class WearableContactService extends Service implements SensorEventListen
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            Logger.d(this, "Action: " + action);
             if (BluetoothDevice.ACTION_FOUND.equals(action)) {
                 BluetoothDevice bluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (bluetoothDevice == null) {
+                    return;
+                }
+                String btAddress = bluetoothDevice.getAddress();
                 short rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, (short) 0);
+                Logger.d(this, "Device address: " + bluetoothDevice.getAddress());
                 if (rssi <= MAX_POWER_LIMIT && rssi >= MIN_POWER_LIMIT) {
-                    if (rssi > prevRSSI) {
+                    if (rssi > prevRSSI && !btAddress.equals(ownerBTAddress) && !bluetoothDevice.getName().contains("MacBook")) {
                         prevRSSI = rssi;
                         mBluetoothDevice = bluetoothDevice;
                     }
-                    Logger.d(this, "Device address: " + bluetoothDevice.getAddress());
                     Logger.d(this, String.format("rssi: %d \n", rssi));
                 }
                 mHandler.removeCallbacks(connectBtRunnable);
-                mHandler.postDelayed(connectBtRunnable, 1000);
+                if (prevRSSI > MAX_POWER_LIMIT - 5) {
+                    mHandler.post(connectBtRunnable);
+                } else {
+                    mHandler.postDelayed(connectBtRunnable, 800);
+                }
                 //Stop Handshake detection until the discovery is finished
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 if (mBluetoothDevice != null) {
@@ -119,7 +132,7 @@ public class WearableContactService extends Service implements SensorEventListen
                 }
                 if (mBluetoothService != null) {
                     int state = mBluetoothService.getState();
-                    if (state == BluetoothService.STATE_NONE) {
+                    if (state != BluetoothService.STATE_CONNECTED) {
                         if (mSensorManager != null && mAccelerometer != null) {
                             mSensorManager.registerListener(WearableContactService.this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
                         }
@@ -135,9 +148,11 @@ public class WearableContactService extends Service implements SensorEventListen
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        String action = intent.getAction();
-        if (Constants.Action.DELETED.equals(action)) {
-            stopSelf();
+        if (intent != null) {
+            String action = intent.getAction();
+            if (Constants.Action.DELETED.equals(action)) {
+                stopSelf();
+            }
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -158,6 +173,18 @@ public class WearableContactService extends Service implements SensorEventListen
         registerReceiver(btReceiver, new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED));
         setRunning(true);
         startForeground(1, createNotification());
+        mSharedPreferences = getSharedPreferences(getPackageName(), MODE_PRIVATE);
+        mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
+        contact = new Contact(mSharedPreferences.getString(Constants.SharedPreferences.FIRST_NAME, ""),
+                mSharedPreferences.getString(Constants.SharedPreferences.FAMILY_NAME, ""),
+                mSharedPreferences.getString(Constants.SharedPreferences.PHONE_NUMBER, ""),
+                mSharedPreferences.getString(Constants.SharedPreferences.EMAIL_ADDRESS, ""));
+        ownerBTAddress = sharedPreferences.getString(Constants.SharedPreferences.BT_ADDRESS, "");
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        if (wakeLock != null) {
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Handshake Lock");
+            wakeLock.acquire();
+        }
     }
 
 
@@ -177,6 +204,11 @@ public class WearableContactService extends Service implements SensorEventListen
             mSensorManager.unregisterListener(this);
         }
         stopForeground(true);
+        mSharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
+        if (wakeLock != null) {
+            wakeLock.release();
+            wakeLock = null;
+        }
     }
 
     @Override
@@ -194,6 +226,7 @@ public class WearableContactService extends Service implements SensorEventListen
     }
 
     private void startAConnectionTo(BluetoothDevice bluetoothDevice) {
+        Logger.d(this, "Tries to connect to: " + bluetoothDevice.getName());
         int state = mBluetoothService.getState();
         if (state != BluetoothService.STATE_CONNECTED &&
                 state != BluetoothService.STATE_CONNECTING) {
@@ -235,7 +268,7 @@ public class WearableContactService extends Service implements SensorEventListen
             float newLinearAcceleration;
             gravity = alpha * gravity + (1 - alpha) * event.values[1];
             newLinearAcceleration = event.values[1] - gravity;
-            if (newLinearAcceleration * linear_acceleration < -1 && now - lastTimeStamp < TIME_LIMIT) {
+            if (newLinearAcceleration * linear_acceleration < -0.5 && now - lastTimeStamp < TIME_LIMIT) {
                 counter++;
             } else {
                 counter = 0;
@@ -287,5 +320,20 @@ public class WearableContactService extends Service implements SensorEventListen
                 .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.handshake))
                 .addAction(action)
                 .build();
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (Constants.SharedPreferences.FAMILY_NAME.equals(key)) {
+            contact.familyName = sharedPreferences.getString(Constants.SharedPreferences.FAMILY_NAME, "");
+        } else if (Constants.SharedPreferences.FIRST_NAME.equals(key)) {
+            contact.firstName = sharedPreferences.getString(Constants.SharedPreferences.FIRST_NAME, "");
+        } else if (Constants.SharedPreferences.PHONE_NUMBER.equals(key)) {
+            contact.phoneNumber = sharedPreferences.getString(Constants.SharedPreferences.PHONE_NUMBER, "");
+        } else if (Constants.SharedPreferences.EMAIL_ADDRESS.equals(key)) {
+            contact.emailAddress = sharedPreferences.getString(Constants.SharedPreferences.EMAIL_ADDRESS, "");
+        } else if (Constants.SharedPreferences.BT_ADDRESS.equals(key)) {
+            ownerBTAddress = sharedPreferences.getString(Constants.SharedPreferences.BT_ADDRESS, "");
+        }
     }
 }

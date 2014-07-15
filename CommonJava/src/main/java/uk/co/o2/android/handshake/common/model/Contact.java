@@ -52,4 +52,8 @@ public class Contact implements Parcelable {
         emailAddress = arrray[3];
 
     }
+
+    public String toString() {
+        return String.format("FirstName: %s\n Surname: %s\n phoneNumber: %s\n emailAddress: %s", firstName, familyName, phoneNumber, emailAddress);
+    }
 }

@@ -5,10 +5,6 @@
     <uses-feature android:name="android.hardware.type.watch" />
     <uses-feature android:name="android.hardware.bluetooth" />
 
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.VIBRATE"/>
-
     <application
         android:name=".WearHandshakeApplication"
         android:allowBackup="true"
@@ -30,6 +26,14 @@
             android:name=".services.WearableContactService"
             android:enabled="true"
             android:exported="false" />
+        <service
+            android:name=".services.DataChangeListenerService"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.BIND_LISTENER" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
